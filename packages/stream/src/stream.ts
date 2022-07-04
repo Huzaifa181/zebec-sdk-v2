@@ -4,6 +4,7 @@ import {
   Connection,
   ConnectionConfig,
   Keypair,
+  LAMPORTS_PER_SOL,
   PublicKey,
   Transaction,
 } from "@solana/web3.js";
@@ -18,6 +19,10 @@ import {
   SYSTEM_RENT,
   A_TOKEN,
 } from "./constants";
+import {
+  setDepositNativeTokenEstimatedFee,
+  setWithdrawNativeTokenEstimatedFee,
+} from "../tests/stream/nativeToken.test";
 import * as INSTRUCTIONS from "./instructions";
 import {
   DepositWithdrawSol,
@@ -27,6 +32,8 @@ import {
   StreamTransactionResponse,
   WithdrawNativeStream,
 } from "./types";
+
+const { NODE_ENV } = process.env;
 
 class ZebecStream {
   protected _connection: Connection;
@@ -122,6 +129,16 @@ export class NativeStream extends ZebecStream {
 
       const res = await this._signAndConfirm(tx);
 
+      //set estimated fee as to calculate balance in testing
+      if (NODE_ENV === "test") {
+        const estimatedFee = await this._connection.getFeeForMessage(
+          tx.compileMessage(),
+          "finalized"
+        );
+        let feeInSol = estimatedFee.value / LAMPORTS_PER_SOL;
+        setDepositNativeTokenEstimatedFee(feeInSol);
+      }
+
       return {
         status: "success",
         message: "deposit successful",
@@ -173,6 +190,15 @@ export class NativeStream extends ZebecStream {
 
       // console.log("response from sign and confirm: ", res);
 
+      //set estimated fee as to calculate balance in testing
+      if (NODE_ENV === "test") {
+        const estimatedFee = await this._connection.getFeeForMessage(
+          tx.compileMessage(),
+          "finalized"
+        );
+        let feeInSol = estimatedFee.value / LAMPORTS_PER_SOL;
+        setWithdrawNativeTokenEstimatedFee(feeInSol);
+      }
       return {
         status: "success",
         message: "withdraw successful",
